@@ -84,6 +84,7 @@ catkin_python_setup()
    FILES
    SegmentSemanticObjects.srv
    ComputeBaseFeatures.srv
+   GetSemanticGrasps.srv
  )
 
 ## Generate actions in the 'action' folder

@@ -19,7 +19,9 @@ SemanticGraspSuggestion::SemanticGraspSuggestion():
 //  heuristic_subscriber_ = private_node_.subscribe("grasp_object_heuristic", 1, &SemanticGraspSuggestion::getHeuristicGraspsCallback, this);
 //  objects_subscriber_ = node_.subscribe(segmentation_topic, 1, &SemanticGraspSuggestion::objectsCallback, this);
 
-  get_semantic_grasps_ = private_node_.advertiseService("get_semantic_grasps", &SemanticGraspSuggestion::getSemanticGraspsCallback, this);
+  get_srv_ = private_node_.advertiseService("get", &SemanticGraspSuggestion::getCallback, this);
+  get_grasps_srv_ = private_node_.advertiseService("get_grasps", &SemanticGraspSuggestion::getGraspsCallback, this);
+
   visualize_semantic_grasps_ = private_node_.advertiseService("visualize_semantic_grasps", &SemanticGraspSuggestion::visualizeSemanticGraspsCallback, this);
 
   // segment_semantic_objects_client_ = node_.serviceClient<rail_semantic_grasping::SegmentSemanticObjects>("object_semantic_segmentation/segment");
@@ -27,9 +29,9 @@ SemanticGraspSuggestion::SemanticGraspSuggestion():
   suggest_heuristic_grasps_client_ = node_.serviceClient<fetch_grasp_suggestion::SuggestGrasps>("suggester/suggest_grasps");
 }
 
-bool SemanticGraspSuggestion::getSemanticGraspsCallback(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
+bool SemanticGraspSuggestion::getCallback(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)
 {
-  // retrieve segmented semantic objects
+    // retrieve segmented semantic objects
   rail_semantic_grasping::SemanticObjectListConstPtr objects_msg =
       ros::topic::waitForMessage<rail_semantic_grasping::SemanticObjectList>(object_semantic_segmentation_topic_,
                                                                              node_, ros::Duration(20));
@@ -43,8 +45,23 @@ bool SemanticGraspSuggestion::getSemanticGraspsCallback(std_srvs::Empty::Request
     return false;
   }
 
+  rail_semantic_grasping::SemanticObjectList objects = *objects_msg;
+  rail_semantic_grasping::SemanticObjectList objects_with_grasps;
+
+  return getGrasps(objects, objects_with_grasps);
+}
+
+bool SemanticGraspSuggestion::getGraspsCallback(rail_semantic_grasping::GetSemanticGraspsRequest &req,
+                                 rail_semantic_grasping::GetSemanticGraspsResponse &res)
+{
+  return getGrasps(req.semantic_objects, res.semantic_objects_with_grasps);
+}
+
+bool SemanticGraspSuggestion::getGrasps(rail_semantic_grasping::SemanticObjectList &objects, 
+                                        rail_semantic_grasping::SemanticObjectList &objects_with_grasps)
+{
   // Important: assume there is just one semantic object segmented
-  rail_semantic_grasping::SemanticObject semantic_object = objects_msg->objects[0];
+  rail_semantic_grasping::SemanticObject semantic_object = objects.objects[0];
 
   // fetch grasps by calling grasp suggestion server several times
   vector<geometry_msgs::Pose> grasp_list;
@@ -158,13 +175,13 @@ bool SemanticGraspSuggestion::getSemanticGraspsCallback(std_srvs::Empty::Request
 
   semantic_object.grasps = semantic_grasps;
   rail_semantic_grasping::SemanticObjectList new_object_list;
-  new_object_list.header = objects_msg->header;
+  new_object_list.header = objects.header;
   new_object_list.objects.push_back(semantic_object);
   new_object_list.cleared = false;
   objects_publisher_.publish(new_object_list);
+  
+  objects_with_grasps = new_object_list;
   return true;
-
-  //ToDo: use map<string, int> to get the statistics of grasps
 }
 
 bool SemanticGraspSuggestion::visualizeSemanticGraspsCallback(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res)

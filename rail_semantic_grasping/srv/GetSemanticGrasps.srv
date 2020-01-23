@@ -1,0 +1,3 @@
+rail_semantic_grasping/SemanticObjectList semantic_objects
+---
+rail_semantic_grasping/SemanticObjectList semantic_objects_with_grasps

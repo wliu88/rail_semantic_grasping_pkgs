@@ -30,6 +30,7 @@
 #include <rail_semantic_grasping/SemanticObject.h>
 #include <rail_semantic_grasping/SemanticGrasp.h>
 #include <rail_semantic_grasping/SegmentSemanticObjects.h>
+#include <rail_semantic_grasping/GetSemanticGrasps.h>
 
 // tf2
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
@@ -56,6 +57,14 @@ namespace rail
 
     private:
 
+      bool getCallback(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
+
+      bool getGraspsCallback(rail_semantic_grasping::GetSemanticGraspsRequest &req,
+                             rail_semantic_grasping::GetSemanticGraspsResponse &res);
+
+      bool getGrasps(rail_semantic_grasping::SemanticObjectList &objects, 
+                     rail_semantic_grasping::SemanticObjectList &objects_with_grasps);
+
       /**
         * @brief Retrieve grasp suggestion for a given object, with grasps ranked by a linear combination of heuristics
         * @param msg
@@ -78,7 +87,7 @@ namespace rail
       ros::ServiceClient segment_semantic_objects_client_;
 
       // service
-      ros::ServiceServer get_semantic_grasps_, visualize_semantic_grasps_;
+      ros::ServiceServer get_grasps_srv_, get_srv_, visualize_semantic_grasps_;
 
       // tf
       tf2_ros::Buffer tf_buffer_;
