@@ -6,7 +6,7 @@ This repo contains simplified version of `fetch_grasp_suggestion`, which only su
   Given an object point cloud, sample grasps and get an initial ranking for them by
   calculating grasp heuristics.
   
-The `rail_semantic_grasping` repo remains the same. Check the readme inside for more detail.
+The `rail_semantic_grasping` and `rail_affordance_detection` repos remain the same. Check the readme inside for more detail.
 
 ## Installation
 Install this pacakage along with the following packages:
