@@ -15,10 +15,11 @@ Install this pacakage along with the following packages:
 * [`rail_manipulation_msgs`](https://github.com/GT-RAIL/rail_manipulation_msgs)
 * [`rail_segmentation`](https://github.com/GT-RAIL/rail_segmentation)
 
-The melodic versions of these packages should also compile in kinetic. 
+The melodic versions of these packages ***should be used!*** 
 
 ## Note:
-If `isnan` error is encountered when compiling `rail_agile`, add `#include <cmath>` to header and replace `isnan` with `std::isnan` in code.
+* If `isnan` error is encountered when compiling `rail_agile`, add `#include <cmath>` to header and replace `isnan` with `std::isnan` in code.
+* A lot of the packages were originally developed with ROS melodic. However, it can be compiled and used in ROS kinetic by adding the line add_compile_options(-std=c++11) to the top-level CMakeLists.txt of the workspace.
 
 ## Run
 See readme inside `rail_semantic_grasping`
