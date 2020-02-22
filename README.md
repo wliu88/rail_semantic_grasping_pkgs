@@ -21,6 +21,9 @@ The melodic versions of these packages ***should be used!***
 * If `isnan` error is encountered when compiling `rail_agile`, add `#include <cmath>` to header and replace `isnan` with `std::isnan` in code.
 * A lot of the packages were originally developed with ROS melodic. However, it can be compiled and used in ROS kinetic by adding the line add_compile_options(-std=c++11) to the top-level CMakeLists.txt of the workspace.
 
+## Running with Sawyer
+* To deal with denser object point cloud, change line 99 of `rail_grasp_calculation/rail_grasp_calculation_nodes/src/GraspSampler.cpp` to `clusterer.setMaxClusterSize(100000);`
+
 ## Run
 See readme inside `rail_semantic_grasping`
   
