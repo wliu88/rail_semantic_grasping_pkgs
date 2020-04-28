@@ -43,6 +43,7 @@
 #include <rail_semantic_grasping/SemanticObject.h>
 #include <rail_semantic_grasping/SemanticPart.h>
 #include <rail_semantic_grasping/SegmentSemanticObjects.h>
+#include <rail_semantic_grasping/SegmentSemanticObjectsFromPointCloud.h>
 
 // PCL
 #include <pcl/common/common.h>
@@ -208,6 +209,9 @@ private:
    */
   bool segmentCallback(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
 
+  bool segmentObjectsFromPointCloudCallback(rail_semantic_grasping::SegmentSemanticObjectsFromPointCloudRequest &req,
+                                            rail_semantic_grasping::SegmentSemanticObjectsFromPointCloudResponse &res);
+
 
   /*!
    * \brief Callback for the main segmentation request.
@@ -240,7 +244,10 @@ private:
    *
    * \param objects List for resulting segmented objects.
    */
-  bool segmentObjectsWithoutAffordance(rail_semantic_grasping::SemanticObjectList &objects);
+  bool segmentObjectsWithoutAffordance(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pc,
+                                       sensor_msgs::ImagePtr rgb_img,
+                                       sensor_msgs::ImagePtr dep_img,
+                                       rail_semantic_grasping::SemanticObjectList &objects);
 
   /*!
    * \brief Callback for the geometric segmentation request.
@@ -316,7 +323,7 @@ private:
                      calculate_features_client_;
 
   /*! Services advertised by this node */
-  ros::ServiceServer segment_srv_, segment_objects_srv_, clear_srv_, remove_object_srv_, calculate_features_srv_;
+  ros::ServiceServer segment_srv_, segment_objects_srv_, segment_objects_from_point_cloud_srv_, clear_srv_, remove_object_srv_, calculate_features_srv_;
   /*! Publishers used in the node. */
   ros::Publisher semantic_objects_pub_, table_pub_, markers_pub_, table_marker_pub_, debug_pc_pub_, debug_pc_pub_2_,
                  debug_pc_pub_3_, debug_img_pub_, debug_pose_pub_;

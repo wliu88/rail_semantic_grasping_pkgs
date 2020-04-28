@@ -68,6 +68,8 @@ ObjectSemanticSegmentation::ObjectSemanticSegmentation() : private_node_("~"), t
   segment_srv_ = private_node_.advertiseService("segment", &ObjectSemanticSegmentation::segmentCallback, this);
   segment_objects_srv_ = private_node_.advertiseService("segment_objects",
                                                         &ObjectSemanticSegmentation::segmentObjectsCallback, this);
+  segment_objects_from_point_cloud_srv_ = private_node_.advertiseService("segment_objects_from_point_cloud",
+                                                                         &ObjectSemanticSegmentation::segmentObjectsFromPointCloudCallback, this);
   clear_srv_ = private_node_.advertiseService("clear", &ObjectSemanticSegmentation::clearCallback, this);
 
   // debug
@@ -183,7 +185,44 @@ bool ObjectSemanticSegmentation::segmentCallback(std_srvs::Empty::Request &req, 
   }
   else
   {
-    return segmentObjectsWithoutAffordance(objects);
+    // check if we have a point cloud first
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pc(new pcl::PointCloud<pcl::PointXYZRGB>);
+    {
+      boost::mutex::scoped_lock lock(pc_mutex_);
+      if (!first_pc_in_)
+      {
+        ROS_WARN("No point cloud received yet. Ignoring segmentation request.");
+        return false;
+      } else
+      {
+        pcl::copyPointCloud(*pc_, *pc);
+      }
+    }
+    sensor_msgs::ImagePtr rgb_img(new sensor_msgs::Image);
+    {
+      boost::mutex::scoped_lock lock(color_img_mutex_);
+      if (!first_color_in_)
+      {
+        ROS_WARN("No color image received yet. Ignoring segmentation request.");
+        return false;
+      } else
+      {
+        *rgb_img = *color_img_;
+      }
+    }
+    sensor_msgs::ImagePtr dep_img(new sensor_msgs::Image);
+    {
+      boost::mutex::scoped_lock lock(depth_img_mutex_);
+      if (!first_depth_in_)
+      {
+        ROS_WARN("No depth image received yet. Ignoring segmentation request.");
+        return false;
+      } else
+      {
+        *dep_img = *depth_img_;
+      }
+    }
+    return segmentObjectsWithoutAffordance(pc, rgb_img, dep_img, objects);
   }
 }
 
@@ -196,45 +235,107 @@ bool ObjectSemanticSegmentation::segmentObjectsCallback(rail_semantic_grasping::
   }
   else
   {
-    return segmentObjectsWithoutAffordance(res.semantic_objects);
+    // check if we have a point cloud first
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pc(new pcl::PointCloud<pcl::PointXYZRGB>);
+    {
+      boost::mutex::scoped_lock lock(pc_mutex_);
+      if (!first_pc_in_)
+      {
+        ROS_WARN("No point cloud received yet. Ignoring segmentation request.");
+        return false;
+      } else
+      {
+        pcl::copyPointCloud(*pc_, *pc);
+      }
+    }
+    sensor_msgs::ImagePtr rgb_img(new sensor_msgs::Image);
+    {
+      boost::mutex::scoped_lock lock(color_img_mutex_);
+      if (!first_color_in_)
+      {
+        ROS_WARN("No color image received yet. Ignoring segmentation request.");
+        return false;
+      } else
+      {
+        *rgb_img = *color_img_;
+      }
+    }
+    sensor_msgs::ImagePtr dep_img(new sensor_msgs::Image);
+    {
+      boost::mutex::scoped_lock lock(depth_img_mutex_);
+      if (!first_depth_in_)
+      {
+        ROS_WARN("No depth image received yet. Ignoring segmentation request.");
+        return false;
+      } else
+      {
+        *dep_img = *depth_img_;
+      }
+    }
+    return segmentObjectsWithoutAffordance(pc, rgb_img, dep_img, res.semantic_objects);
   }
 }
 
-bool ObjectSemanticSegmentation::segmentObjectsWithoutAffordance(rail_semantic_grasping::SemanticObjectList &objects)
+bool ObjectSemanticSegmentation::segmentObjectsFromPointCloudCallback(rail_semantic_grasping::SegmentSemanticObjectsFromPointCloudRequest &req,
+                                                                      rail_semantic_grasping::SegmentSemanticObjectsFromPointCloudResponse &res)
 {
-  // check if we have a point cloud first
+  if (use_affordance_segmentation_)
   {
-    boost::mutex::scoped_lock lock(pc_mutex_);
-    if (!first_pc_in_)
-    {
-      ROS_WARN("No point cloud received yet. Ignoring segmentation request.");
-      return false;
-    }
+    ROS_INFO("Service not implemented for segmentation with affordance detection.");
+    return false;
   }
-  sensor_msgs::ImagePtr rgb_img(new sensor_msgs::Image);
+  else
   {
-    boost::mutex::scoped_lock lock(color_img_mutex_);
-    if (!first_color_in_)
-    {
-      ROS_WARN("No color image received yet. Ignoring segmentation request.");
-      return false;
-    } else
-    {
-      *rgb_img = *color_img_;
-    }
+    // convert pc from sensor_msgs::PointCloud2 to pcl::PointCloud<pcl::PointXYZRGB>
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pc(new pcl::PointCloud<pcl::PointXYZRGB>);
+    pcl::fromROSMsg(req.point_cloud, *pc);
+    sensor_msgs::ImagePtr rgb_img(new sensor_msgs::Image);
+    *rgb_img = req.rgb_image;
+    sensor_msgs::ImagePtr dep_img(new sensor_msgs::Image);
+    *dep_img = req.depth_image;
+
+    return segmentObjectsWithoutAffordance(pc, rgb_img, dep_img, res.semantic_objects);
   }
-  sensor_msgs::ImagePtr dep_img(new sensor_msgs::Image);
-  {
-    boost::mutex::scoped_lock lock(depth_img_mutex_);
-    if (!first_depth_in_)
-    {
-      ROS_WARN("No depth image received yet. Ignoring segmentation request.");
-      return false;
-    } else
-    {
-      *dep_img = *depth_img_;
-    }
-  }
+}
+
+bool ObjectSemanticSegmentation::segmentObjectsWithoutAffordance(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pc,
+                                                                 sensor_msgs::ImagePtr rgb_img,
+                                                                 sensor_msgs::ImagePtr dep_img,
+                                                                 rail_semantic_grasping::SemanticObjectList &objects)
+{
+//  // check if we have a point cloud first
+//  {
+//    boost::mutex::scoped_lock lock(pc_mutex_);
+//    if (!first_pc_in_)
+//    {
+//      ROS_WARN("No point cloud received yet. Ignoring segmentation request.");
+//      return false;
+//    }
+//  }
+//  sensor_msgs::ImagePtr rgb_img(new sensor_msgs::Image);
+//  {
+//    boost::mutex::scoped_lock lock(color_img_mutex_);
+//    if (!first_color_in_)
+//    {
+//      ROS_WARN("No color image received yet. Ignoring segmentation request.");
+//      return false;
+//    } else
+//    {
+//      *rgb_img = *color_img_;
+//    }
+//  }
+//  sensor_msgs::ImagePtr dep_img(new sensor_msgs::Image);
+//  {
+//    boost::mutex::scoped_lock lock(depth_img_mutex_);
+//    if (!first_depth_in_)
+//    {
+//      ROS_WARN("No depth image received yet. Ignoring segmentation request.");
+//      return false;
+//    } else
+//    {
+//      *dep_img = *depth_img_;
+//    }
+//  }
 
   // clear the objects first
   std_srvs::Empty empty;
@@ -242,7 +343,7 @@ bool ObjectSemanticSegmentation::segmentObjectsWithoutAffordance(rail_semantic_g
 
   rail_manipulation_msgs::SegmentObjectsFromPointCloud segment_objects_srv;
   sensor_msgs::PointCloud2 provide_pc;
-  pcl::toROSMsg(*pc_, provide_pc);
+  pcl::toROSMsg(*pc, provide_pc);
   ROS_INFO("check pc input %d", provide_pc.width);
   segment_objects_srv.request.point_cloud = provide_pc;
   if (!segment_objects_from_point_cloud_client_.call(segment_objects_srv))

@@ -83,6 +83,7 @@ catkin_python_setup()
  add_service_files(
    FILES
    SegmentSemanticObjects.srv
+   SegmentSemanticObjectsFromPointCloud.srv
    ComputeBaseFeatures.srv
    GetSemanticGrasps.srv
  )

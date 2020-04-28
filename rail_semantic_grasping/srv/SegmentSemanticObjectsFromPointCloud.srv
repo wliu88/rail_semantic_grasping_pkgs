@@ -1,0 +1,5 @@
+sensor_msgs/PointCloud2 point_cloud
+sensor_msgs/Image rgb_image
+sensor_msgs/Image depth_image
+---
+rail_semantic_grasping/SemanticObjectList semantic_objects
